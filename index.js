@@ -8,7 +8,7 @@ const csvFilePath = "./sample_dataset.csv";
 // const file = fs.readFileSync("sample_dataset.csv", "utf-8");
 // const parsedData = [];
 const parsedData = {};
-
+const timeData = {};
 // create readable stream from CSV file which allows to read from file in smaller chunks
 fs.createReadStream(csvFilePath)
   .pipe(csvParser())
@@ -16,20 +16,42 @@ fs.createReadStream(csvFilePath)
     // console.log(row["timestamp, userID, taskID, eventType"], "row");
     const rowData = row["timestamp, userID, taskID, eventType"];
     const textData = rowData.split(", ");
-    const [timeStamp, userId, taskId, taskType] = textData;
+    const [timeStamp, userId, taskId, eventType] = textData;
     // console.log(timeStamp, "time stamp");
     // console.log(userId, "user id");
-    console.log(taskId, "task id");
+
     // console.log(taskType, "task type");
 
     //check if userId exists in hash
     if (parsedData[userId]) {
       // check if taskId exists
-      if (parsedData[userId].taskId) {
-        console.log(parsedData[userId].taskId, "here");
-      } else {
-        parsedData[userId].taskId = [timeStamp, taskType];
-      }
+      parsedData[userId].tasks.find((item) => {
+        if (item.taskId === taskId) {
+          const startTime =
+            item.eventType === TaskTypeEnum.TASK_STARTED
+              ? item.timeStamp
+              : timeStamp;
+
+          const endTime =
+            startTime === item.timeStamp ? timeStamp : item.timeStamp;
+
+          const timeElapsed = getTimeDifferenceInMilliseconds(
+            startTime,
+            endTime
+          );
+        } else {
+          parsedData[userId].tasks.push({
+            taskId: taskId,
+            timeStamp: timeStamp,
+            eventType: eventType,
+          });
+        }
+      });
+      // if (parsedData[userId].tasks) {
+      //   console.log(parsedData[userId].tasks, "here");
+      // } else {
+      //   parsedData[userId].taskId = [timeStamp, taskType];
+      // }
       // if true
       // compare the task type with the current task type
       // compare values
@@ -40,7 +62,9 @@ fs.createReadStream(csvFilePath)
       // create new user Id as key and taskId as value and taskId has
       // parsedData[userId] = { taskId: [timeStamp, taskType] };
       // parsedData[userId] = { taskId };
-      parsedData[userId] = [taskId];
+      parsedData[userId] = {
+        tasks: [{ taskId: taskId, timeStamp: timeStamp, eventType: eventType }],
+      };
     }
     // const data = row.split(":");
     // console.log(data, "data");
@@ -50,6 +74,7 @@ fs.createReadStream(csvFilePath)
   })
   .on("end", () => {
     console.log("Parsed CSV data:", parsedData);
+
     // console.log(TaskTypeEnum);
     // Your further processing with the parsed data goes here
   });
@@ -58,6 +83,10 @@ console.log("testing");
 
 /*
   userId: {
-    taskId: [EventType, TimeStamp]
+    tasks: [{
+      taskId,
+      timeStamp,
+      type
+    }]
   }
 */
